@@ -1,0 +1,296 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ task.title }} - Task Manager{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('list_projects') }}">Projects</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('view_project', project_id=task.project_id) }}">{{ task.project_title }}</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ task.title }}</li>
+        </ol>
+    </nav>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow mb-4 task-card priority-{{ task.priority }}">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h3 class="mb-0">{{ task.title }}</h3>
+                <span class="badge bg-{{ 'secondary' if task.status == 'pending' else 'primary' if task.status == 'in_progress' else 'success' if task.status == 'completed' else 'danger' }}">
+                    {{ task.status.replace('_', ' ').title() }}
+                </span>
+            </div>
+            <div class="card-body">
+                <p class="lead">{{ task.description }}</p>
+                
+                <div class="mb-3">
+                    {% for tag in tags %}
+                        <span class="tag" style="background-color: {{ tag.color }}">{{ tag.name }}</span>
+                    {% endfor %}
+                </div>
+                
+                <hr>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <dl class="row">
+                            <dt class="col-sm-4">Created by</dt>
+                            <dd class="col-sm-8">{{ task.created_username }}</dd>
+                            
+                            <dt class="col-sm-4">Created</dt>
+                            <dd class="col-sm-8">{{ task.created_at }}</dd>
+                            
+                            <dt class="col-sm-4">Updated</dt>
+                            <dd class="col-sm-8">{{ task.updated_at }}</dd>
+                        </dl>
+                    </div>
+                    <div class="col-md-6">
+                        <dl class="row">
+                            <dt class="col-sm-4">Assigned to</dt>
+                            <dd class="col-sm-8">{{ task.assigned_username or 'Unassigned' }}</dd>
+                            
+                            <dt class="col-sm-4">Priority</dt>
+                            <dd class="col-sm-8">
+                                <span class="badge bg-{{ 'success' if task.priority == 1 else 'info' if task.priority == 2 else 'warning' if task.priority == 3 else 'orange' if task.priority == 4 else 'danger' }}">
+                                    {{ 'Low' if task.priority == 1 else 'Medium-Low' if task.priority == 2 else 'Medium' if task.priority == 3 else 'Medium-High' if task.priority == 4 else 'High' }}
+                                </span>
+                            </dd>
+                            
+                            <dt class="col-sm-4">Due date</dt>
+                            <dd class="col-sm-8">{{ task.due_date or 'No due date' }}</dd>
+                        </dl>
+                    </div>
+                </div>
+                
+                {% if member_role in ['owner', 'admin', 'member'] %}
+                <hr>
+                <div class="row">
+                    <div class="col-md-12">
+                        <h5>Update Task</h5>
+                        <div class="btn-group me-2 mb-2">
+                            <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                Status
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item update-task" href="#" data-field="status" data-value="pending">Pending</a></li>
+                                <li><a class="dropdown-item update-task" href="#" data-field="status" data-value="in_progress">In Progress</a></li>
+                                <li><a class="dropdown-item update-task" href="#" data-field="status" data-value="completed">Completed</a></li>
+                                <li><a class="dropdown-item update-task" href="#" data-field="status" data-value="cancelled">Cancelled</a></li>
+                            </ul>
+                        </div>
+                        
+                        <div class="btn-group me-2 mb-2">
+                            <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                Priority
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item update-task" href="#" data-field="priority" data-value="1">Low</a></li>
+                                <li><a class="dropdown-item update-task" href="#" data-field="priority" data-value="2">Medium-Low</a></li>
+                                <li><a class="dropdown-item update-task" href="#" data-field="priority" data-value="3">Medium</a></li>
+                                <li><a class="dropdown-item update-task" href="#" data-field="priority" data-value="4">Medium-High</a></li>
+                                <li><a class="dropdown-item update-task" href="#" data-field="priority" data-value="5">High</a></li>
+                            </ul>
+                        </div>
+                        
+                        <button class="btn btn-outline-info mb-2" id="process-task-btn">
+                            <i class="fas fa-cogs"></i> Process Task
+                        </button>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Comments Section -->
+        <div class="card shadow mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">Comments</h5>
+            </div>
+            <div class="card-body">
+                <div id="comments-container">
+                    {% if comments %}
+                        {% for comment in comments %}
+                            <div class="comment-box">
+                                <div class="d-flex justify-content-between">
+                                    <h6>{{ comment.username }}</h6>
+                                    <small class="text-muted">{{ comment.created_at }}</small>
+                                </div>
+                                <p>{{ comment.content }}</p>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-center text-muted">No comments yet.</p>
+                    {% endif %}
+                </div>
+                
+                <hr>
+                
+                <form id="comment-form">
+                    <div class="form-group mb-3">
+                        <label for="content">Add a comment</label>
+                        <textarea class="form-control" id="comment-content" name="content" rows="3" required></textarea>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">Post Comment</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <!-- Attachments Section -->
+        <div class="card shadow mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">Attachments</h5>
+            </div>
+            <div class="card-body">
+                {% if attachments %}
+                    <div class="list-group">
+                        {% for attachment in attachments %}
+                            <div class="list-group-item">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">{{ attachment.filename }}</h6>
+                                    <small>{{ (attachment.file_size / 1024)|round(1) }} KB</small>
+                                </div>
+                                <p class="mb-1">{{ attachment.mime_type }}</p>
+                                <small class="text-muted">Uploaded by {{ attachment.username }} on {{ attachment.uploaded_at }}</small>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-center text-muted">No attachments yet.</p>
+                {% endif %}
+                
+                {% if member_role in ['owner', 'admin', 'member'] %}
+                <hr>
+                <form action="{{ url_for('add_attachment', task_id=task.task_id) }}" method="post" enctype="multipart/form-data">
+                    <div class="form-group mb-3">
+                        <label for="file">Upload file</label>
+                        <input type="file" class="form-control" id="file" name="file" required>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">Upload</button>
+                    </div>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Activity History -->
+        <div class="card shadow mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">Activity History</h5>
+            </div>
+            <div class="card-body">
+                {% if activities %}
+                    <ul class="list-group list-group-flush">
+                        {% for activity in activities %}
+                            <li class="list-group-item px-0">
+                                <div class="d-flex justify-content-between">
+                                    <span>{{ activity.username }} {{ activity.action }} this task</span>
+                                    <small class="text-muted">{{ activity.created_at }}</small>
+                                </div>
+                                {% if activity.details %}
+                                    <small class="text-muted">{{ activity.details }}</small>
+                                {% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-center text-muted">No activity recorded.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        // Update task status or priority
+        $('.update-task').click(function(e) {
+            e.preventDefault();
+            
+            var field = $(this).data('field');
+            var value = $(this).data('value');
+            
+            $.ajax({
+                url: '{{ url_for("update_task", task_id=task.task_id) }}',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    field: field,
+                    value: value
+                }),
+                success: function(response) {
+                    // Reload the page to show updated task
+                    location.reload();
+                },
+                error: function(xhr) {
+                    alert('Error updating task: ' + xhr.responseJSON.error);
+                }
+            });
+        });
+        
+        // Add comment via AJAX
+        $('#comment-form').submit(function(e) {
+            e.preventDefault();
+            
+            var content = $('#comment-content').val();
+            
+            $.ajax({
+                url: '{{ url_for("add_comment", task_id=task.task_id) }}',
+                type: 'POST',
+                data: {
+                    content: content
+                },
+                success: function(response) {
+                    // Add the new comment to the comments container
+                    var comment = response.comment;
+                    var commentHtml = `
+                        <div class="comment-box">
+                            <div class="d-flex justify-content-between">
+                                <h6>${comment.username}</h6>
+                                <small class="text-muted">${comment.created_at}</small>
+                            </div>
+                            <p>${comment.content}</p>
+                        </div>
+                    `;
+                    
+                    // If no comments yet, remove the "no comments" message
+                    if ($('#comments-container p.text-center').length) {
+                        $('#comments-container').empty();
+                    }
+                    
+                    $('#comments-container').prepend(commentHtml);
+                    $('#comment-content').val('');
+                },
+                error: function(xhr) {
+                    alert('Error adding comment: ' + xhr.responseJSON.error);
+                }
+            });
+        });
+        
+        // Process task button
+        $('#process-task-btn').click(function(e) {
+            e.preventDefault();
+            
+            $.ajax({
+                url: '{{ url_for("trigger_task_processing", task_id=task.task_id) }}',
+                type: 'POST',
+                success: function(response) {
+                    alert('Task processing started. This may take a few moments.');
+                },
+                error: function(xhr) {
+                    alert('Error processing task: ' + xhr.responseJSON.error);
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}
