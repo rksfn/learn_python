@@ -77,7 +77,7 @@ Each module contains:
 Clone this repository and follow the setup guide to prepare your environment:
 
 ```bash
-git clone https://github.com/yourusername/python-debugging-masterclass.git
+git clone https://github.com/rksfn/python-debugging-masterclass.git
 cd python-debugging-masterclass
 ```
 
